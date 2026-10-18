@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="寝落ち寸前のマッチョ男を30分（約3分）寝かせない、スマホ・PC対応のドット絵睡眠妨害ゲーム。">
+<meta name="theme-color" content="#14112e">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>マッスル睡眠妨害</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap">
+<style>
+/* Layout: one-screen arcade column — HUD / pixel stage / message window / three choice buttons */
+:root{
+  --night:#14112e; --panel:#1d1942; --panel2:#29225c; --line:#463d86;
+  --ink:#f4efdd; --dim:#a8a1d4; --lamp:#ffd23f; --hot:#ff4f8b; --zzz:#7fd0ff;
+  --ok:#7ee07a; --bad:#ff5a5a; --scrim:rgba(16,13,38,.9);
+  --f-ui:"DotGothic16","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+  --f-num:"Press Start 2P","DotGothic16",monospace;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--night);color:var(--ink);font-family:var(--f-ui);overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+button{font-family:var(--f-ui);color:var(--ink);cursor:pointer}
+button:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+#app{height:100%;max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px;box-sizing:border-box;position:relative}
+
+/* HUD */
+.hud{display:flex;flex-direction:column;gap:5px}
+.hud-row{display:flex;align-items:center;gap:12px}
+.lbl{font-size:10px;color:var(--dim);letter-spacing:.08em;margin-right:6px}
+.clock b,.score b{font-family:var(--f-num);font-size:13px;font-weight:400;font-variant-numeric:tabular-nums}
+.clock .of{font-family:var(--f-num);font-size:9px;color:var(--dim);margin-left:2px}
+.score{margin-left:auto}
+.icon-btn{background:var(--panel2);border:2px solid var(--line);padding:4px 8px;font-size:11px;border-radius:0}
+.gauge{display:grid;grid-template-columns:72px 1fr 64px;align-items:center;gap:8px}
+.glbl{font-size:12px}
+.gval{font-family:var(--f-num);font-size:9px;text-align:right;font-variant-numeric:tabular-nums}
+.bar{height:12px;background:#0b0920;border:2px solid var(--line);position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--ok);transition:width .08s linear}
+#sleepG.warn .bar i{background:var(--lamp)}
+#sleepG.danger .bar i{background:var(--bad);animation:blink .4s steps(2) infinite}
+#sleepG.danger .glbl{color:var(--bad)}
+.gauge.fever .bar i{background:var(--hot)}
+#app.in-fever .gauge.fever .bar i{background:repeating-linear-gradient(90deg,var(--hot) 0 6px,var(--lamp) 6px 12px);animation:slide .3s linear infinite}
+@keyframes blink{50%{opacity:.45}}
+@keyframes slide{to{background-position:12px 0}}
+
+/* Stage */
+.stage-wrap{flex:1;min-height:0;display:grid;place-items:center}
+.stage{position:relative;border:3px solid var(--line);box-shadow:0 0 0 3px #0b0920;overflow:hidden;max-width:100%}
+#cv{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+#app.in-fever .stage{animation:feverFlash .25s steps(2) infinite}
+@keyframes feverFlash{50%{border-color:var(--hot)}}
+.fx{position:absolute;inset:0;pointer-events:none}
+.float{position:absolute;transform:translate(-50%,-50%);font-size:clamp(14px,4.2vw,22px);white-space:nowrap;text-shadow:2px 2px 0 #000,-1px -1px 0 #000;animation:floatUp 1.2s ease-out forwards}
+.float.great{color:var(--lamp);font-size:clamp(20px,6vw,32px)}
+.float.bad{color:var(--bad)}
+.float.kake{color:var(--hot);font-size:clamp(16px,5vw,26px)}
+.float.dim{color:var(--zzz);font-size:clamp(12px,3.4vw,16px)}
+.float.tag{color:var(--ok);font-size:clamp(12px,3.4vw,16px)}
+@keyframes floatUp{0%{opacity:0;margin-top:8px}12%{opacity:1;margin-top:0}75%{opacity:1}100%{opacity:0;margin-top:-26px}}
+.banner{position:absolute;left:0;right:0;top:8%;text-align:center;padding:8px 10px;background:rgba(10,8,28,.82);border-block:2px solid var(--lamp);color:var(--lamp);font-size:clamp(13px,3.8vw,18px);text-wrap:balance;animation:bannerIn .25s steps(3)}
+.banner.fever{border-color:var(--hot);color:var(--hot);font-size:clamp(16px,5vw,26px)}
+.banner.bad{border-color:var(--zzz);color:var(--zzz)}
+@keyframes bannerIn{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.bubble{position:absolute;max-width:46%;padding:6px 9px;background:var(--ink);color:#1a1530;font-size:clamp(11px,3.1vw,14px);line-height:1.35;border:2px solid #1a1530}
+.bubble::after{content:"";position:absolute;width:8px;height:8px;background:var(--ink);border:2px solid #1a1530;border-top:0;border-left:0;transform:rotate(45deg)}
+#bubble{right:4%;top:6%}
+#bubble::after{left:10px;bottom:-6px}
+#bubble .who{display:block;font-size:.8em;color:#5a4f8c}
+#evbubble{left:4%;bottom:6%;background:var(--lamp)}
+#evbubble::after{background:var(--lamp);right:14px;top:-6px;transform:rotate(-135deg)}
+.dream{position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,rgba(127,208,255,.25),rgba(12,10,32,.92) 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center}
+.dream .d1{margin:0;color:var(--zzz);font-size:clamp(14px,4vw,18px)}
+.dream .d2{margin:0;font-size:clamp(12px,3.4vw,15px)}
+#dreamBtn{background:var(--hot);border:3px solid var(--ink);font-size:clamp(18px,5.5vw,26px);padding:10px 28px;border-radius:0;box-shadow:4px 4px 0 #000;touch-action:none}
+#dreamBtn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 #000}
+.dbar{width:60%;height:10px;border:2px solid var(--ink);background:#0b0920;position:relative}
+.dbar i{position:absolute;inset:0 auto 0 0;background:var(--zzz)}
+#dreamCount{margin:0;font-family:var(--f-num);font-size:11px}
+
+/* Message window */
+.msg{background:var(--panel);border:3px solid var(--ink);box-shadow:inset 0 0 0 2px var(--panel),inset 0 0 0 4px var(--line);padding:8px 12px;min-height:4.9em;display:flex;flex-direction:column;gap:2px;font-size:clamp(12px,3.3vw,15px);line-height:1.4}
+.msg p{margin:0}
+.m1{color:var(--dim)}
+.m3{color:var(--ok);font-size:.88em;min-height:1.2em}
+.t-s{color:var(--ok)}.t-g{color:var(--lamp)}.t-f{color:var(--bad)}.t-i{color:var(--zzz)}
+
+/* Choices */
+.choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.choice{position:relative;min-height:84px;background:var(--panel2);border:3px solid var(--cat,var(--line));border-radius:0;padding:16px 6px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;box-shadow:0 4px 0 #0b0920;transition:transform .05s}
+.choice:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 #0b0920}
+.choice:disabled{opacity:.45;cursor:default}
+.choice .key{position:absolute;top:3px;left:5px;font-family:var(--f-num);font-size:8px;color:var(--dim)}
+.choice .cat{position:absolute;top:2px;right:5px;font-size:10px;color:var(--cat)}
+.choice .name{font-size:clamp(12px,3.4vw,15px);line-height:1.3;word-break:break-word}
+.choice .tol{font-size:10px;color:var(--lamp);min-height:1em}
+.choices.locked .choice{opacity:.55;pointer-events:none}
+.choices.danger .choice .name{filter:blur(.6px);animation:wobble 1.6s ease-in-out infinite}
+.choices.danger .choice:nth-child(2) .name{animation-delay:-.5s}
+.choices.danger .choice:nth-child(3) .name{animation-delay:-1s}
+@keyframes wobble{0%,100%{transform:translate(0,0) skewX(0)}30%{transform:translate(1px,1px) skewX(-6deg)}60%{transform:translate(-1px,0) skewX(5deg)}}
+.choice.pose{--cat:var(--hot);background:#3a1840}
+.choice.pose .name{font-size:clamp(13px,3.8vw,17px);color:var(--lamp)}
+
+/* Screens */
+.screen{position:absolute;inset:0;background:var(--scrim);display:flex;align-items:center;justify-content:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px;box-sizing:border-box;z-index:5;overflow-y:auto}
+.card{width:100%;max-width:440px;display:flex;flex-direction:column;gap:12px;text-align:center}
+.kicker{margin:0;font-family:var(--f-num);font-size:10px;color:var(--hot);letter-spacing:.1em}
+.logo{margin:0;font-weight:400;line-height:1.25;text-wrap:balance}
+.logo .l1{display:block;font-size:clamp(15px,4.4vw,20px);color:var(--lamp)}
+.logo .l2{display:block;font-size:clamp(28px,9vw,44px);color:var(--ink);text-shadow:3px 3px 0 var(--hot)}
+.howto{margin:0;padding:10px 12px;background:var(--panel);border:2px solid var(--line);text-align:left;font-size:13px;line-height:1.6;list-style:none;display:flex;flex-direction:column;gap:3px}
+.howto b{color:var(--lamp);font-weight:400}
+.big{background:var(--hot);border:3px solid var(--ink);font-size:20px;padding:12px;border-radius:0;box-shadow:4px 4px 0 #000}
+.big:active{transform:translate(2px,2px);box-shadow:2px 2px 0 #000}
+.sub{font-size:12px;color:var(--dim);margin:0}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btns .big{grid-column:1/-1}
+.ghost{background:var(--panel2);border:2px solid var(--line);padding:10px;font-size:14px;border-radius:0}
+#rHead{margin:0;font-weight:400;font-size:clamp(24px,7vw,34px);text-wrap:balance}
+#rHead.clear{color:var(--lamp)}
+.r-msg{margin:0;white-space:pre-line;font-size:15px;line-height:1.5;color:var(--ink);text-wrap:balance}
+.stats{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;background:var(--panel);border:2px solid var(--line);padding:12px 14px;text-align:left;font-size:14px}
+.stats dt{color:var(--dim)}
+.stats dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.stats dd.rank{color:var(--lamp)}
+#copyNote{min-height:1em}
+@media (prefers-reduced-motion:reduce){
+  .float,.banner,.choices.danger .choice .name,#sleepG.danger .bar i,#app.in-fever .stage{animation:none!important}
+}
+@media (max-width:380px){.choice{min-height:78px}.gauge{grid-template-columns:64px 1fr 56px}}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="hud">
+    <div class="hud-row">
+      <div class="clock"><span class="lbl">経過</span><b id="clock">00:00</b><span class="of">/30:00</span></div>
+      <div class="score"><span class="lbl">SCORE</span><b id="score">0</b></div>
+      <button id="muteBtn" class="icon-btn" type="button" aria-label="音のオン・オフ">♪ ON</button>
+    </div>
+    <div class="gauge" id="sleepG"><span class="glbl">眠気</span><div class="bar"><i id="sleepBar"></i></div><span class="gval" id="sleepVal">30%</span></div>
+    <div class="gauge fever" id="feverG"><span class="glbl">フィーバー</span><div class="bar"><i id="feverBar"></i></div><span class="gval" id="comboVal">-</span></div>
+  </div>
+
+  <div class="stage-wrap" id="stageWrap">
+    <div class="stage" id="stage">
+      <canvas id="cv" width="160" height="120" aria-label="寝落ち寸前のマッチョ男"></canvas>
+      <div class="fx" id="fx"></div>
+      <div class="bubble" id="bubble" hidden></div>
+      <div class="bubble" id="evbubble" hidden></div>
+      <div class="banner" id="banner" hidden></div>
+      <div class="dream" id="dream" hidden>
+        <p class="d1">……夢の中……</p>
+        <p class="d2">連打で目を覚ませ！（1回だけ）</p>
+        <button id="dreamBtn" type="button">起きろ！！</button>
+        <div class="dbar"><i id="dreamBar"></i></div>
+        <p id="dreamCount">0 / 12</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="msg" id="msg" aria-live="polite">
+    <p class="m1" id="m1">▶ 30分間、この男を寝かせるな。</p>
+    <p class="m2" id="m2">下の3つから行動を選んで、まぶたをこじ開けろ！</p>
+    <p class="m3" id="m3"></p>
+  </div>
+
+  <div class="choices" id="choices"></div>
+
+  <div class="screen" id="title">
+    <div class="card">
+      <p class="kicker">MUSCLE vs SLEEP</p>
+      <h1 class="logo"><span class="l1">バキバキ☆30分耐久！寝かせるな！</span><span class="l2">マッスル睡眠妨害</span></h1>
+      <ul class="howto">
+        <li>・眠気ゲージが<b>100%</b>になったら寝落ち。30分（約3分）耐えればクリア</li>
+        <li>・3択から行動を選ぶ（PCは <b>1 2 3</b> キー）。同じ手の連発は<b>慣れ</b>て大失敗しやすくなる</li>
+        <li>・<b>💤罠系</b>はほぼ即寝落ち。でもたまに大成功する賭けの手</li>
+        <li>・ちがうジャンルを続けると<b>コンボ</b>、寝言のジャンルに合う手は<b>1.5倍</b></li>
+        <li>・まぶたが閉じる寸前で起こすと<b>ギリギリセーフ ×2</b></li>
+        <li>・フィーバーゲージが満タンで<b>ポージング連打タイム</b>。終わると反動が来る</li>
+      </ul>
+      <button class="big" id="startBtn" type="button">起こしに行く（スタート）</button>
+      <p class="sub" id="titleInfo">音が出ます。右上の ♪ で切り替え</p>
+    </div>
+  </div>
+
+  <div class="screen" id="result" hidden>
+    <div class="card">
+      <p class="kicker" id="rKicker">GAME OVER</p>
+      <h2 id="rHead">スヤァ…</h2>
+      <p class="r-msg" id="rMsg"></p>
+      <dl class="stats">
+        <dt>耐えた時間</dt><dd id="rTime">-</dd>
+        <dt>スコア</dt><dd id="rScore">-</dd>
+        <dt>大成功</dt><dd id="rGreat">-</dd>
+        <dt>最大コンボ</dt><dd id="rCombo">-</dd>
+        <dt>称号</dt><dd class="rank" id="rRank">-</dd>
+      </dl>
+      <p class="sub" id="rZukan"></p>
+      <div class="btns">
+        <button class="big" id="againBtn" type="button">もう一度起こす</button>
+        <button class="ghost" id="copyBtn" type="button">結果をコピー</button>
+        <button class="ghost" id="toTitleBtn" type="button">タイトルへ</button>
+      </div>
+      <p class="sub" id="copyNote"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const cv=$('cv'), ctx=cv.getContext('2d');
+const W=160,H=120,GAME_LEN=180;
+const rand=(a,b)=>a+Math.random()*(b-a);
+const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
+const shuffle=arr=>{const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- Data ---------- */
+const CATS={
+  muscle:{name:'筋肉系',icon:'💪',color:'#ff8a5b'},
+  stim:{name:'刺激系',icon:'⚡',color:'#5bc8ff'},
+  food:{name:'食事系',icon:'🍗',color:'#8fe36b'},
+  mind:{name:'精神系',icon:'🔥',color:'#ffd23f'},
+  trap:{name:'罠系',icon:'💤',color:'#c49bff'}
+};
+const ACTIONS=[
+ {id:1,name:'プロテインを口に注入',cat:'food',prop:'🥤',power:26,fx:'veins',s:'ゴクゴク飲んで目がギラッと光る',g:'全身に血管が浮き上がり「タンパク質…来たァ！」と叫ぶ',f:'粉のまま注入してしまい、むせた勢いで気絶'},
+ {id:2,name:'大会の掛け声を叫ぶ',cat:'mind',prop:'📣',power:26,loud:true,fx:'spot',s:'「ナイスバルク！」に反射してポーズ',g:'幻の観客とスポットライトが出現し、ステージ気分に',f:'本人が「…ねむぃ」と小声で返事をして、そのまま寝る'},
+ {id:3,name:'子守唄を歌う',cat:'trap',prop:'🎵',power:0,fx:'jump',s:'',g:'音痴すぎて飛び起き「誰だ今の！？」',f:'2小節目で寝息をたてる'},
+ {id:4,name:'耳元で「チートデイ終了」と囁く',cat:'mind',prop:'🍰',power:28,fx:'squat',s:'絶望で目がカッと見開く',g:'涙を流しながら高速スクワットを始める',f:'「…チートデイ…ケーキ…」と夢の中へ'},
+ {id:5,name:'氷水をバケツでかける',cat:'stim',prop:'🪣',power:30,fx:'steam',s:'「ヒャッ！」と跳ねる',g:'体温で水が一瞬で蒸発し、湯気が立ち込める中で覚醒',f:'「…ちょうどいい温度」と冷却されて快眠'},
+ {id:6,name:'鏡を見せる',cat:'muscle',prop:'🪞',power:24,fx:'flex',s:'自分の筋肉に見惚れる',g:'鏡の中の自分とポーズ合戦を始める',f:'鏡の中の自分が先に寝て、つられて寝る'},
+ {id:7,name:'ダンベルを握らせる',cat:'muscle',prop:'🏋️',power:26,fx:'veins',s:'反射的にアームカールを始める',g:'力を入れすぎてダンベルがぐにゃりと曲がる',f:'ダンベルを枕にして寝る'},
+ {id:8,name:'激辛唐辛子を食べさせる',cat:'food',prop:'🌶️',power:30,fx:'fire',s:'口から火を吹く',g:'「辛ッ！！」と跳ね上がり、天井に頭が刺さる',f:'辛さの限界を超えて白目で気絶'},
+ {id:9,name:'目覚まし時計を100個鳴らす',cat:'stim',prop:'⏰',power:28,loud:true,fx:'flex',s:'飛び起きる',g:'100個すべてを高速パンチで止め、目がバキバキに',f:'「あと5分…」×100回、すべてスヌーズされる'},
+ {id:10,name:'大胸筋をくすぐる',cat:'stim',prop:'🪶',power:22,fx:'laugh',s:'胸がピクピク反応する',g:'筋肉が笑い出し、本人もつられて大爆笑',f:'マッサージだと勘違いして極楽の表情に'},
+ {id:11,name:'「体脂肪率、上がってない？」と言う',cat:'mind',prop:'⚖️',power:26,fx:'squat',s:'顔が青ざめる',g:'腹筋を見せつけながら高速クランチを始める',f:'「…明日から本気出す」と言って寝る'},
+ {id:12,name:'羊を数える',cat:'trap',prop:'🐑',power:0,fx:'sheep',s:'',g:'羊が全員マッチョで「数えるな！」と抗議し、ベンチプレス大会が始まる',f:'羊3匹目で落ちる'},
+ {id:13,name:'鬼トレーナーを召喚',cat:'mind',prop:'👹',power:28,loud:true,fx:'flex',s:'直立不動で「押忍！」',g:'二人で謎の合同ポーズを決める',f:'トレーナーも寝不足で先に寝て、つられて寝る'},
+ {id:14,name:'ふかふか布団を見せる',cat:'trap',prop:'🛏️',power:0,fx:'jump',s:'',g:'「布団は…甘えだァ！」と布団を破り捨てて覚醒',f:'布団が見えた瞬間に吸い込まれる'},
+ {id:15,name:'日焼けマシンに入れる',cat:'stim',prop:'☀️',power:26,fx:'tan',s:'肌がさらに黒く焼ける',g:'黒くなりすぎて画面が真っ暗に。目と歯だけが光る',f:'ポカポカ温かくて寝る'}
+];
+const KAKEGOE=['キレてる！','ナイスバルク！','デカい！','肩にちっちゃいジープ乗せてんのかい！','大胸筋が独立国家！','腹筋がチョコレート工場！','まぶたまで鍛えてる！','起きてるだけで国宝！','その上腕、もはや太もも！'];
+const POSES=['サイドチェスト','ダブルバイセップス','モストマスキュラー','アブドミナル＆サイ','ラットスプレッド','フロントリラックス'];
+const DANGER_LINES=['まぶた残り3ミリ','意識がプロテインに溶けていく…','脳内で羊がスクワットを始めました'];
+const OVER_MSGS=['おやすみマッスル。筋肉は寝ている間に育つ。（それは正しい）','Zzz… 筋繊維、修復開始。','GAME OVER → GAIN OVER'];
+const CLEAR_MSGS=['彼は30分間、一度もまばたきしなかった。','起きてる！ 今日もデカい！'];
+const HINTS={
+  muscle:['…ベンチ…空いてますか…','…ダンベル…どこ…','…脚の日…サボってない…'],
+  food:['…ささみ…あと一本…','…ママ…プロテイン…バニラ味…','…白米…大盛りで…'],
+  stim:['…水風呂…入りたい…','…サウナ…あと5分…','…刺激が…足りない…'],
+  mind:['…コーチ…叱ってください…','…ナイスバルク…言われたい…','…大会…負けられない…']
+};
+const EV={
+  sheep:{rate:1.7,banner:'睡魔ウェーブ！ 羊の大群が窓から侵入！',who:'羊の大群',say:'メェ〜（数えて…数えて…）'},
+  futon:{rate:1.7,banner:'睡魔ウェーブ！ 布団が自分から近づいてくる！',who:'布団',say:'（ふかふか…こっちおいで…）'},
+  principal:{rate:1.8,banner:'睡魔ウェーブ！ 校長先生の長い話！',who:'校長先生',say:'えー、本日は大変お日柄もよく、えー、思い起こせば…'},
+  mom:{rate:1.4,banner:'乱入！ 母が電気を消した！',who:'母',say:'もう寝なさい！ 明日早いんでしょ！'},
+  cat:{rate:1.3,banner:'乱入！ 猫が膝の上で丸くなった',who:'猫',say:'ニャ…（スヤァ…）'},
+  neighbor:{rate:1,banner:'乱入！ 隣人の壁ドン！ 大声系アクション封印',who:'隣人',say:'ドンッ！！ 静かにしろ！'}
+};
+
+/* ---------- Storage (per-viewer convenience only) ---------- */
+const store={
+  get(k,d){try{const v=localStorage.getItem('msb_'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem('msb_'+k,JSON.stringify(v));}catch(e){}}
+};
+const zukan=new Set(store.get('zukan',[]));
+let best=store.get('best',0);
+const ZUKAN_TOTAL=ACTIONS.reduce((n,a)=>n+(a.cat==='trap'?2:3),0);
+function zukanAdd(key){if(!zukan.has(key)){zukan.add(key);store.set('zukan',[...zukan]);}}
+
+/* ---------- Audio ---------- */
+const AU={ctx:null,master:null,music:null,filter:null,sfx:null,noiseBuf:null,on:store.get('sound',true),mode:'title',step:0,next:0,timer:null};
+const mtof=m=>440*Math.pow(2,(m-69)/12);
+function auInit(){
+  if(AU.ctx){if(AU.ctx.state==='suspended')AU.ctx.resume();return;}
+  const C=window.AudioContext||window.webkitAudioContext; if(!C)return;
+  try{
+    const c=AU.ctx=new C();
+    AU.master=c.createGain(); AU.master.gain.value=AU.on?0.5:0; AU.master.connect(c.destination);
+    AU.filter=c.createBiquadFilter(); AU.filter.type='lowpass'; AU.filter.frequency.value=14000; AU.filter.connect(AU.master);
+    AU.music=c.createGain(); AU.music.gain.value=0.32; AU.music.connect(AU.filter);
+    AU.sfx=c.createGain(); AU.sfx.gain.value=0.6; AU.sfx.connect(AU.master);
+    const len=c.sampleRate*0.5; AU.noiseBuf=c.createBuffer(1,len,c.sampleRate);
+    const d=AU.noiseBuf.getChannelData(0); for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+    AU.next=c.currentTime+0.05;
+    AU.timer=setInterval(schedule,25);
+  }catch(e){AU.ctx=null;}
+}
+function tone(f,t,dur,type,vol,dest,slide){
+  const c=AU.ctx; if(!c)return;
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,t); if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+dur);
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0008,t+dur);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t+dur+0.03);
+}
+function noise(t,dur,vol,dest,hp){
+  const c=AU.ctx; if(!c)return;
+  const s=c.createBufferSource(); s.buffer=AU.noiseBuf;
+  const f=c.createBiquadFilter(); f.type='highpass'; f.frequency.value=hp||1000;
+  const g=c.createGain(); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0008,t+dur);
+  s.connect(f); f.connect(g); g.connect(dest); s.start(t); s.stop(t+dur+0.02);
+}
+const CHORDS=[[57,60,64],[53,57,60],[55,59,62],[52,56,59]], ROOTS=[45,41,43,40];
+const LULLABY={0:76,4:74,8:72,12:74,16:72,20:69,24:67,32:69,36:72,40:74,44:72,48:69,52:67,56:64};
+const ARP=[0,1,2,1,2,0,1,2];
+function playStep(s,t){
+  const m=AU.mode, bar=Math.floor(s/16)%4, i=s%16, M=AU.music, ch=CHORDS[bar];
+  if(m==='off')return;
+  if(m==='danger'){
+    if(i===0){tone(mtof(ROOTS[bar]),t,1.2,'triangle',0.3,M);tone(120,t,0.25,'sine',0.6,M,45);}
+    if(i===8)tone(120,t,0.25,'sine',0.4,M,45);
+    if(LULLABY[s]!==undefined)tone(mtof(LULLABY[s]),t,0.9,'sine',0.22,M);
+    return;
+  }
+  const drums=m!=='title', fever=m==='fever';
+  if(drums){
+    if(i%4===0)tone(150,t,0.14,'sine',fever?1:0.9,M,40);
+    if(i===4||i===12)noise(t,0.1,0.35,M,1200);
+    if(i%2===1||(fever&&i%4!==0))noise(t,0.03,fever?0.18:0.13,M,7000);
+  }
+  if(i%2===0)tone(mtof(ROOTS[bar]+((i/2)%2?12:0)),t,0.11,'square',0.2,M);
+  tone(mtof(ch[ARP[i%8]]+12),t,0.08,'square',m==='title'?0.06:0.085,M);
+  if(fever){
+    if(i%4===2)ch.forEach(n=>tone(mtof(n+12),t,0.14,'sawtooth',0.05,M));
+    tone(mtof(ch[ARP[(i+3)%8]]+24),t,0.05,'square',0.05,M);
+  }
+}
+function schedule(){
+  const c=AU.ctx; if(!c)return;
+  while(AU.next<c.currentTime+0.12){
+    playStep(AU.step,AU.next);
+    const bpm=AU.mode==='fever'?190:AU.mode==='danger'?118:176;
+    AU.next+=60/bpm/4; AU.step=(AU.step+1)%64;
+  }
+}
+function setMode(m){
+  if(AU.mode===m)return; AU.mode=m;
+  if(AU.ctx&&AU.filter){const t=AU.ctx.currentTime;AU.filter.frequency.cancelScheduledValues(t);AU.filter.frequency.setTargetAtTime(m==='danger'?650:14000,t,0.15);}
+}
+function sfx(k){
+  const c=AU.ctx; if(!c)return; const t=c.currentTime+0.01, D=AU.sfx;
+  switch(k){
+    case 'pick':tone(880,t,0.05,'square',0.18,D);break;
+    case 'ok':[660,880,1100].forEach((f,j)=>tone(f,t+j*0.05,0.08,'square',0.16,D));break;
+    case 'great':[523,659,784,1047].forEach((f,j)=>tone(f,t+j*0.05,0.1,'square',0.18,D));tone(1319,t+0.22,0.35,'square',0.16,D);break;
+    case 'fail':tone(600,t,0.7,'triangle',0.35,D,70);break;
+    case 'tap':tone(500+Math.random()*300,t,0.04,'square',0.15,D);break;
+    case 'event':noise(t,0.2,0.35,D,300);tone(110,t,0.35,'square',0.2,D,80);break;
+    case 'wake':tone(200,t,0.3,'square',0.25,D,1400);break;
+    case 'pose':noise(t,0.07,0.3,D,2000);tone(220,t,0.1,'square',0.18,D,330);break;
+    case 'fever':[523,659,784,1047,1319,1568].forEach((f,j)=>tone(f,t+j*0.04,0.1,'sawtooth',0.12,D));break;
+    case 'clear':[523,523,523,698,880,1047].forEach((f,j)=>tone(f,t+[0,.12,.24,.36,.6,.84][j],j===5?0.6:0.1,'square',0.2,D));break;
+  }
+}
+function speak(text){
+  if(!AU.on||!('speechSynthesis' in window))return;
+  try{window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='ja-JP';u.rate=1.35;u.pitch=0.4;u.volume=0.9;window.speechSynthesis.speak(u);}catch(e){}
+}
+function setSound(on){
+  AU.on=on; store.set('sound',on);
+  $('muteBtn').textContent=on?'♪ ON':'♪ OFF';
+  if(AU.master)AU.master.gain.setTargetAtTime(on?0.5:0,AU.ctx.currentTime,0.02);
+  if(!on){try{window.speechSynthesis&&window.speechSynthesis.cancel();}catch(e){}}
+}
+
+/* ---------- Run state ---------- */
+let S=null;
+const M={time:0,close:0.3,anim:{type:'idle',t:0},prop:null,parts:[],titleSleep:20,zT:0,sheepT:0,shakeT:0};
+function makeEvents(){
+  const ev=[{t:55,dur:12,kind:'sheep'},{t:115,dur:12,kind:'futon'},{t:150,dur:10,kind:'principal'}];
+  const slots=[[22,46],[72,106],[130,144]], kinds=shuffle(['mom','cat','neighbor']);
+  slots.forEach((s,i)=>ev.push({t:rand(s[0],s[1]),dur:kinds[i]==='neighbor'?7:kinds[i]==='mom'?5:6,kind:kinds[i]}));
+  return ev.sort((a,b)=>a.t-b.t).map(e=>Object.assign(e,{started:false,done:false}));
+}
+function newRun(){
+  S={phase:'play',t:0,sleep:30,fever:0,feverT:0,score:0,combo:0,maxCombo:0,lastCat:null,great:0,picks:0,tol:{},choices:[],lock:0,
+     hint:null,hintT:0,nextHint:5,dreamUsed:false,events:makeEvents(),active:{},lastDanger:false,dangerT:2,fallT:0,dreamT:0,dreamTaps:0,endT:0,cleared:false,reason:''};
+  ACTIONS.forEach(a=>S.tol[a.id]=0);
+  M.anim={type:'react',t:0}; M.parts=[]; M.prop=null;
+}
+
+/* ---------- UI helpers ---------- */
+function floatText(text,cls,x,y){
+  const d=document.createElement('div'); d.className='float '+(cls||''); d.textContent=text;
+  d.style.left=(x==null?50:x)+'%'; d.style.top=(y==null?40:y)+'%';
+  $('fx').appendChild(d); setTimeout(()=>d.remove(),1250);
+}
+let bannerTimer=0;
+function showBanner(text,cls,sec){
+  const b=$('banner'); b.className='banner '+(cls||''); b.textContent=text; b.hidden=false;
+  b.style.animation='none'; void b.offsetWidth; b.style.animation='';
+  clearTimeout(bannerTimer); bannerTimer=setTimeout(()=>{b.hidden=true;},(sec||2)*1000);
+}
+function showMsg(l1,l2,l3){ $('m1').innerHTML=l1; $('m2').textContent=l2||''; $('m3').textContent=l3||''; }
+function garble(n){
+  const p=Math.min(0.45,Math.max(0.12,(S.sleep-65)/70));
+  let out=[...n].map(ch=>Math.random()<p?'…':ch).join('');
+  if(Math.random()<0.35)out+=pick(['ふとん','すやぁ','zzz']);
+  return out;
+}
+
+/* ---------- Choices ---------- */
+function dealChoices(){
+  if(!S||S.phase!=='play')return;
+  if(S.feverT>0){
+    S.choices=shuffle(POSES).slice(0,3).map(n=>({pose:true,name:n}));
+    renderChoices(); return;
+  }
+  const picks=[];
+  if(S.hint&&Math.random()<0.75)picks.push(pick(ACTIONS.filter(a=>a.cat===S.hint)));
+  let trap=false;
+  for(const a of shuffle(ACTIONS)){
+    if(picks.length>=3)break;
+    if(picks.includes(a))continue;
+    if(a.cat==='trap'){if(trap||Math.random()<0.4)continue;trap=true;}
+    picks.push(a);
+  }
+  S.choices=shuffle(picks); renderChoices();
+}
+function renderChoices(){
+  const box=$('choices'); box.innerHTML='';
+  if(!S){box.classList.remove('danger','locked');return;}
+  const danger=S.sleep>=70&&S.feverT<=0; S.lastDanger=danger;
+  box.classList.toggle('danger',danger); box.classList.toggle('locked',S.lock>0||S.phase!=='play');
+  S.choices.forEach((a,i)=>{
+    const b=document.createElement('button'); b.type='button'; b.id='choice'+i;
+    if(a.pose){
+      b.className='choice pose';
+      b.innerHTML=`<span class="key">${i+1}</span><span class="cat">POSE</span><span class="name">${esc(a.name)}</span><span class="tol">連打！</span>`;
+    }else{
+      const c=CATS[a.cat], sealed=!!(S.active.neighbor&&a.loud), tl=Math.round(S.tol[a.id]);
+      b.className='choice'; b.style.setProperty('--cat',danger?'var(--line)':c.color);
+      const tolTxt=sealed?'🔇 封印中':(S.tol[a.id]>=0.9?'慣れ'+'●'.repeat(Math.min(3,tl))+'○'.repeat(Math.max(0,3-tl)):'');
+      b.innerHTML=`<span class="key">${i+1}</span><span class="cat">${danger?'？？？':c.icon+c.name}</span><span class="name">${esc(danger?garble(a.name):a.name)}</span><span class="tol">${tolTxt}</span>`;
+      b.disabled=sealed;
+    }
+    b.addEventListener('click',()=>choose(i));
+    box.appendChild(b);
+  });
+}
+function choose(i){
+  if(!S||S.phase!=='play'||S.lock>0)return;
+  const a=S.choices[i]; if(!a)return;
+  if(a.pose)return posePick(a);
+  if(S.active.neighbor&&a.loud)return;
+  resolveAction(a);
+}
+
+/* ---------- Core resolution ---------- */
+function resolveAction(a){
+  const pre=S.sleep, tl=S.tol[a.id];
+  let type;
+  if(a.cat==='trap')type=Math.random()<0.2?'g':'f';
+  else{
+    const failP=tl<0.9?0:Math.min(0.5,0.1+0.12*(tl-1)), r=Math.random();
+    type=r<failP?'f':r<failP+0.15?'g':'s';
+  }
+  ACTIONS.forEach(x=>{if(x.id!==a.id)S.tol[x.id]=Math.max(0,S.tol[x.id]-0.5);});
+  S.tol[a.id]+=1; S.picks++;
+  zukanAdd(a.id+type);
+  M.prop={ch:a.prop,t:0}; sfx('pick');
+  const label={s:'成功',g:'大成功!!',f:'大失敗…'}[type];
+  const head=`<span class="t-${type}">【${label}】</span> ▶ ${esc(a.name)}`;
+  if(type==='f'){
+    S.combo=0; S.lastCat=null;
+    showMsg(head,a.f,'');
+    floatText('大失敗…','bad',50,30);
+    fallAsleep(a.f); return;
+  }
+  const tags=[]; let mult=1;
+  let base=a.cat==='trap'?48:a.power/(1+0.5*tl);
+  if(S.hint&&a.cat===S.hint){mult*=1.5;tags.push('寝言的中 ×1.5');}
+  if(S.lastCat&&S.lastCat!==a.cat)S.combo++; else S.combo=1;
+  S.lastCat=a.cat; S.maxCombo=Math.max(S.maxCombo,S.combo);
+  if(S.combo>=2){mult*=1+0.1*Math.min(S.combo-1,5);tags.push(S.combo+'コンボ');}
+  if(pre>=85){mult*=2;tags.push('ギリギリセーフ！ ×2');floatText('ギリギリセーフ！','tag',50,62);}
+  if(type==='g')base*=1.8;
+  if(tl>=0.9)tags.push('慣れで効果ダウン');
+  const gain=base*mult;
+  S.sleep=Math.max(0,S.sleep-gain);
+  S.fever=Math.min(100,S.fever+(type==='g'?30:12)*(S.hint&&a.cat===S.hint?1.3:1));
+  S.score+=Math.round(gain*10)*(type==='g'?2:1);
+  showMsg(head,type==='g'?a.g:a.s,tags.join(' / '));
+  if(type==='g'){S.great++;sfx('great');floatText('大成功!!','great',50,28);setAnim('great',a.fx);for(let k=0;k<14;k++)spark(80+rand(-40,40),50+rand(-30,30));}
+  else{sfx('ok');setAnim('react');floatText('覚醒！','dim',62,22);}
+  S.lock=0.65; $('choices').classList.add('locked');
+  if(S.fever>=100)startFever();
+}
+function setAnim(type,fx){M.anim={type:type,t:0,fx:fx||null,v:Math.random()};
+  if(type==='great'&&fx==='fire')for(let k=0;k<16;k++)M.parts.push({k:'fire',x:80+rand(-2,2),y:42,vx:rand(-30,30),vy:rand(10,40),life:rand(.4,.8),max:.8});
+  if(type==='great'&&fx==='sheep')for(let k=0;k<5;k++)M.parts.push({k:'emoji',ch:'🐑',size:12,x:-10-k*14,y:rand(92,108),vx:55,vy:0,life:4,max:4,flip:true});
+}
+function spark(x,y){M.parts.push({k:'spark',x:x,y:y,vx:rand(-20,20),vy:rand(-30,-5),life:rand(.4,.9),max:.9});}
+
+/* ---------- Fever ---------- */
+function startFever(){
+  S.feverT=6; S.fever=100; S.sleep=0; S.lock=0;
+  $('app').classList.add('in-fever');
+  showBanner('フィーバー！！ 限界覚醒！！ ポーズ連打！','fever',1.6);
+  sfx('fever'); setAnim('great','flex'); dealChoices();
+}
+function posePick(p){
+  S.score+=150;
+  const k=pick(KAKEGOE);
+  floatText(k,'kake',rand(25,75),rand(20,70)); floatText('「'+p.name+'！」','dim',50,86);
+  speak(k); sfx('pose');
+  M.anim={type:'pose',t:0,v:Math.random()};
+  for(let i=0;i<5;i++)spark(80+rand(-50,50),40+rand(-25,25));
+  S.lock=0.12; $('choices').classList.add('locked');
+}
+function endFever(){
+  S.feverT=0; S.fever=0; S.sleep=50;
+  $('app').classList.remove('in-fever');
+  showBanner('反動が来た…まぶたが重い…','bad',1.6);
+  showMsg('<span class="t-i">【反動】</span> ▶ フィーバー終了','筋肉の燃料切れ。眠気が一気に押し寄せる！','');
+  S.lock=0; dealChoices();
+}
+
+/* ---------- Sleep / dream / end ---------- */
+function fallAsleep(reason){
+  S.phase='falling'; S.fallT=1.5; S.reason=reason;
+  M.anim={type:'asleep',t:0}; $('app').classList.remove('in-fever');
+  $('choices').classList.add('locked');
+  sfx('fail'); setMode('off'); showBanner('スヤァ…','bad',1.4);
+  clearEventUI();
+}
+function startDream(){
+  S.phase='dream'; S.dreamUsed=true; S.dreamT=3.5; S.dreamTaps=0;
+  $('dream').hidden=false; $('dreamCount').textContent='0 / 12'; $('dreamBar').style.width='100%';
+  setMode('danger');
+  setTimeout(()=>{try{$('dreamBtn').focus({preventScroll:true});}catch(e){}},50);
+}
+function dreamTap(){
+  if(!S||S.phase!=='dream')return;
+  S.dreamTaps++; sfx('tap'); $('dreamCount').textContent=S.dreamTaps+' / 12';
+  if(S.dreamTaps>=12){
+    $('dream').hidden=true; S.phase='play'; S.sleep=40; S.lock=0;
+    sfx('wake'); showBanner('ハッ！！ 夢の中から自力で生還！','',1.6);
+    showMsg('<span class="t-g">【復活】</span> ▶ 夢の中で連打','白目のまま飛び起きた。もう夢には逃げられない！','');
+    setAnim('great','flex'); dealChoices();
+  }
+}
+function endGame(){
+  S.phase='ending'; S.endT=1.1; S.cleared=false; $('dream').hidden=true; setMode('off');
+}
+function clearGame(){
+  S.phase='ending'; S.cleared=true; S.endT=3.4; S.t=GAME_LEN; S.sleep=0;
+  $('app').classList.remove('in-fever'); $('choices').classList.add('locked');
+  clearEventUI(); setMode('off'); sfx('clear');
+  showBanner('30分耐久達成！！','fever',1.4);
+  showMsg('<span class="t-g">【CLEAR】</span> ▶ 30分間、寝かせなかった','ご褒美：30分睡眠','');
+  M.anim={type:'great',t:0,fx:'spot'};
+  setTimeout(()=>{if(S&&S.phase==='ending'){showBanner('ご褒美：30分睡眠','',2);M.anim={type:'asleep',t:0};floatText('0.1秒で寝た','dim',50,60);}},1500);
+}
+function rankTitle(min,cleared,great){
+  if(cleared)return great>=12?'睡魔をジム退会させた男':'不眠の大胸筋';
+  if(min<5)return'寝落ち三秒の男'; if(min<10)return'プロテインの粉'; if(min<15)return'筋肉見習い';
+  if(min<20)return'中級マッチョ'; if(min<25)return'ナイスバルク級'; return'キレてる級（あと一歩）';
+}
+function fmtGame(t){const gs=Math.min(1800,Math.floor(t/GAME_LEN*1800));return String(Math.floor(gs/60)).padStart(2,'0')+':'+String(gs%60).padStart(2,'0');}
+let lastResultText='';
+function showResult(){
+  S.phase='result';
+  const score=Math.round(S.score), min=S.t/GAME_LEN*30, rank=rankTitle(min,S.cleared,S.great);
+  const isBest=score>best; if(isBest){best=score;store.set('best',best);}
+  $('rKicker').textContent=S.cleared?'STAGE CLEAR':'GAME OVER';
+  $('rHead').textContent=S.cleared?'30分耐久達成！':'スヤァ…（寝落ち）';
+  $('rHead').className=S.cleared?'clear':'';
+  $('rMsg').textContent=S.cleared?pick(CLEAR_MSGS):(S.reason?S.reason+'。':'')+'\n'+pick(OVER_MSGS);
+  $('rTime').textContent=fmtGame(S.t)+' / 30:00';
+  $('rScore').textContent=score.toLocaleString()+(isBest?'（自己ベスト！）':'');
+  $('rGreat').textContent=S.great+'回';
+  $('rCombo').textContent=S.maxCombo;
+  $('rRank').textContent=rank;
+  $('rZukan').textContent='リアクション図鑑 '+zukan.size+' / '+ZUKAN_TOTAL+'　ベスト '+best.toLocaleString();
+  $('copyNote').textContent='';
+  lastResultText=`『マッスル睡眠妨害』で ${fmtGame(S.t)} 耐えた！ スコア ${score.toLocaleString()} 称号「${rank}」`;
+  $('result').hidden=false;
+  setTimeout(()=>{try{$('againBtn').focus({preventScroll:true});}catch(e){}},50);
+}
+
+/* ---------- Events ---------- */
+function startEvent(e){
+  const d=EV[e.kind]; sfx('event');
+  showBanner(d.banner,'',2.4);
+  const b=$('evbubble'); b.innerHTML='<span class="who">'+esc(d.who)+'</span>'+esc(d.say); b.hidden=false;
+  if(e.kind==='neighbor'){M.shakeT=0.4;renderChoices();}
+}
+function endEvent(e){
+  if(!Object.keys(S.active).length)$('evbubble').hidden=true;
+  if(e.kind==='neighbor')renderChoices();
+}
+function clearEventUI(){$('evbubble').hidden=true;$('bubble').hidden=true;}
+function startHint(){
+  const cat=pick(['muscle','food','stim','mind']);
+  S.hint=cat; S.hintT=6.5;
+  const b=$('bubble'); b.innerHTML='<span class="who">寝言</span>'+esc(pick(HINTS[cat])); b.hidden=false;
+}
+
+/* ---------- Update ---------- */
+function update(dt){
+  M.time+=dt;
+  M.anim.t+=dt; if(M.prop){M.prop.t+=dt;if(M.prop.t>0.9)M.prop=null;}
+  if(M.shakeT>0)M.shakeT-=dt;
+  if(!S){
+    M.titleSleep+=dt*24;
+    if(M.titleSleep>98){M.titleSleep=8;M.anim={type:'react',t:0};}
+    approachClose(M.titleSleep,dt);
+  }else{
+    if(S.phase==='play')updatePlay(dt);
+    else if(S.phase==='falling'){S.fallT-=dt;if(S.fallT<=0){if(!S.dreamUsed)startDream();else endGame();}}
+    else if(S.phase==='dream'){S.dreamT-=dt;$('dreamBar').style.width=Math.max(0,S.dreamT/3.5*100)+'%';if(S.dreamT<=0)endGame();}
+    else if(S.phase==='ending'){S.endT-=dt;if(S.endT<=0)showResult();}
+    approachClose(S.sleep,dt);
+  }
+  updateParticles(dt);
+  updateHUD();
+}
+function approachClose(sleep,dt){
+  let target=Math.min(1,Math.max(0,(sleep-15)/85));
+  const a=M.anim;
+  if((a.type==='react'&&a.t<0.6)||(a.type==='great'&&a.t<1.3)||a.type==='pose')target=0;
+  if(a.type==='asleep')target=1;
+  M.close+=(target-M.close)*Math.min(1,dt*(target<M.close?14:5));
+}
+function updatePlay(dt){
+  S.t+=dt;
+  for(const e of S.events){
+    if(!e.started&&S.t>=e.t){e.started=true;S.active[e.kind]=e;startEvent(e);}
+    if(e.started&&!e.done&&S.t>=e.t+e.dur){e.done=true;delete S.active[e.kind];endEvent(e);}
+  }
+  if(S.hint){S.hintT-=dt;if(S.hintT<=0){S.hint=null;$('bubble').hidden=true;S.nextHint=S.t+rand(4,8);}}
+  else if(S.t>=S.nextHint)startHint();
+  if(S.feverT>0){S.feverT-=dt;S.sleep=0;if(S.feverT<=0)endFever();}
+  else{
+    let rate=5+9*(S.t/GAME_LEN);
+    for(const k in S.active)rate*=EV[k].rate;
+    S.sleep+=rate*dt;
+  }
+  S.score+=dt*10;
+  if(S.lock>0){S.lock-=dt;if(S.lock<=0){S.lock=0;dealChoices();}}
+  const danger=S.sleep>=70&&S.feverT<=0;
+  if(danger!==S.lastDanger&&S.lock<=0)renderChoices();
+  if(danger){S.dangerT-=dt;if(S.dangerT<=0){S.dangerT=3.2;floatText(pick(DANGER_LINES),'dim',50,90);}}
+  if(S.active.sheep){M.sheepT-=dt;if(M.sheepT<=0){M.sheepT=0.45;M.parts.push({k:'emoji',ch:'🐑',size:11,x:-10,y:rand(90,110),vx:rand(40,60),vy:0,life:4.5,max:4.5,flip:true});}}
+  if(S.t>=GAME_LEN){clearGame();return;}
+  if(S.sleep>=100&&S.feverT<=0){S.sleep=100;S.combo=0;showMsg('<span class="t-f">【寝落ち】</span> ▶ 眠気ゲージ100%','まぶたが…完全に…閉じた…','');fallAsleep('まぶたが完全に閉じた');return;}
+  setMode(S.feverT>0?'fever':danger?'danger':'main');
+}
+function updateParticles(dt){
+  const a=M.anim;
+  if(a.type==='asleep'){M.zT-=dt;if(M.zT<=0){M.zT=0.55;M.parts.push({k:'z',x:96,y:24,vx:rand(6,14),vy:-14,life:1.6,max:1.6});}}
+  if(a.type==='great'&&a.fx==='steam'&&a.t<1.4&&Math.random()<0.6)M.parts.push({k:'steam',x:80+rand(-22,22),y:rand(20,70),vx:rand(-4,4),vy:rand(-26,-14),life:rand(.6,1.1),max:1.1});
+  for(const p of M.parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.k==='fire')p.vy-=40*dt;}
+  M.parts=M.parts.filter(p=>p.life>0&&p.x<W+20);
+}
+let hudCache={};
+function setText(id,v){if(hudCache[id]!==v){hudCache[id]=v;$(id).textContent=v;}}
+function updateHUD(){
+  if(!S){setText('clock','00:00');return;}
+  setText('clock',fmtGame(S.t));
+  setText('score',Math.round(S.score).toLocaleString());
+  const sl=Math.round(S.sleep);
+  $('sleepBar').style.width=sl+'%'; setText('sleepVal',sl+'%');
+  const g=$('sleepG'); g.classList.toggle('warn',sl>=50&&sl<70); g.classList.toggle('danger',sl>=70);
+  $('feverBar').style.width=(S.feverT>0?S.feverT/6*100:S.fever)+'%';
+  setText('comboVal',S.feverT>0?'FEVER':S.combo>=2?S.combo+'COMBO':'-');
+}
+
+/* ---------- Drawing ---------- */
+function r(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h);}
+function emoji(ch,x,y,size,flip){
+  ctx.save(); ctx.font=size+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  if(flip){ctx.translate(Math.round(x),Math.round(y));ctx.scale(-1,1);ctx.fillText(ch,0,0);}else ctx.fillText(ch,Math.round(x),Math.round(y));
+  ctx.restore();
+}
+function drawRoom(){
+  r(0,0,W,H,'#241f4f');
+  for(let x=3;x<W;x+=8)r(x,0,1,98,'#2b2560');
+  r(0,98,W,22,'#3a2c4f'); r(0,98,W,2,'#55427a');
+  for(let x=0;x<W;x+=16)r(x,104,8,1,'#43345c');
+  // window + moon
+  r(7,11,36,30,'#5a4d8f'); r(8,12,34,28,'#0e0c26');
+  r(31,16,5,8,'#fff3b0'); r(30,17,7,6,'#fff3b0'); r(29,16,4,7,'#0e0c26');
+  [[12,15],[18,30],[38,34],[14,35],[27,28]].forEach(p=>r(p[0],p[1],1,1,'#cfc8ff'));
+  r(24,12,1,28,'#5a4d8f'); r(8,25,34,1,'#5a4d8f');
+  // wall clock with game time
+  r(102,11,12,14,'#e8e3ff'); r(101,12,14,12,'#e8e3ff'); r(101,12,1,1,'#241f4f');
+  r(107,17,2,2,'#241f4f');
+  const gm=S?S.t/GAME_LEN*30:(M.time*2)%30, ang=(gm/60)*Math.PI*2-Math.PI/2;
+  for(let k=1;k<5;k++)r(108+Math.cos(ang)*k-0.5,18+Math.sin(ang)*k-0.5,1,1,'#ff4f8b');
+  r(108,14,1,4,'#241f4f');
+  // poster
+  r(122,13,28,22,'#ffd23f'); r(123,14,26,20,'#ff4f8b'); emoji('💪',136,24,13);
+  // bed
+  r(122,84,38,13,'#ece6ff'); r(138,80,18,6,'#ffffff'); r(122,84,38,2,'#c9c0f0'); r(120,96,40,6,'#6b4a3a'); r(120,96,40,1,'#8a6450');
+}
+const OUT='#1a0d08';
+function drawMan(){
+  const a=M.anim, t=M.time, sleep=S?S.sleep:M.titleSleep;
+  let ox=0,oy=0,pose='idle',mouth='grin',dark=false,veins=false;
+  const p=a.t;
+  if(a.type==='react'&&p<0.35){ox=(Math.floor(p*30)%2)?1:-1;mouth='shout';pose='shock';}
+  if(a.type==='great'&&p<1.4){
+    const q=Math.min(1,p/1.0);
+    pose='flex'; mouth='shout';
+    switch(a.fx){
+      case 'jump':oy=-Math.round(Math.sin(Math.PI*q)*16);pose='shock';break;
+      case 'fire':oy=-Math.round(Math.sin(Math.PI*q)*46);pose='shock';if(p>0.4&&p<0.45)floatText('ゴンッ！！','bad',50,8);break;
+      case 'squat':oy=Math.round(Math.abs(Math.sin(p*18))*6);pose='shock';break;
+      case 'laugh':ox=(Math.floor(p*24)%2)?1:-1;mouth='laugh';pose='shock';break;
+      case 'veins':veins=true;break;
+      case 'tan':dark=true;mouth='laugh';break;
+    }
+  }
+  if(a.type==='pose'){pose=a.v<0.5?'flex':'shock';mouth='shout';veins=true;oy=p<0.1?-2:0;}
+  if(a.type==='asleep'){mouth='sleep';oy=Math.round(Math.sin(t*2)*0.6)+1;}
+  else if(a.type==='idle'||(a.type==='react'&&p>=0.35)||(a.type==='great'&&p>=1.4)){
+    if(sleep>60)mouth='tired';
+    oy+=Math.round(Math.sin(t*2.4)*0.6);
+  }
+  if(M.shakeT>0)ox+=(Math.floor(M.time*40)%2)?2:-2;
+  let hy=0;
+  if(a.type==='asleep')hy=4;
+  else if(sleep>60&&!(a.type==='great'&&p<1.4)&&a.type!=='pose'&&!(a.type==='react'&&p<0.6))hy=Math.round((sleep-60)/40*3)+(Math.sin(t*3.2)>0.75?1:0);
+
+  const skin=dark?'#21130c':'#7b4526', shade=dark?'#150b06':'#57301a', hi=dark?'#2e1a10':'#a3653b';
+  ctx.save(); ctx.translate(ox,oy);
+  const parts=[]; const P=(x,y,w,h)=>parts.push([x,y,w,h]); const PM=(x,y,w,h)=>{P(x,y,w,h);P(W-x-w,y,w,h);};
+  // torso
+  P(71,46+hy,18,10); PM(60,52,20,8); PM(46,58,34,12); PM(38,58,16,16); P(54,62,52,20); P(58,80,44,40);
+  // arms
+  if(pose==='flex'){PM(22,60,20,13);PM(18,34,13,30);PM(17,28,15,9);PM(26,55,12,6);}
+  else if(pose==='shock'){PM(26,62,16,12);PM(14,50,14,14);PM(10,44,10,8);}
+  else{PM(36,70,14,26);PM(34,74,4,14);PM(38,94,12,26);}
+  // head
+  P(67,18+hy,26,28); P(69,44+hy,22,5); PM(64,29+hy,4,7);
+  for(const q of parts)r(q[0]-1,q[1]-1,q[2]+2,q[3]+2,OUT);
+  for(const q of parts)r(q[0],q[1],q[2],q[3],skin);
+  // muscle details
+  r(56,80,22,2,shade); r(82,80,22,2,shade); r(79,62,2,18,shade); r(79,82,2,32,shade);
+  [89,98,107].forEach(y=>r(64,y,31,1,shade));
+  r(58,84,3,30,shade); r(99,84,3,30,shade);
+  r(58,64,8,2,hi); r(86,64,8,2,hi); r(41,60,6,2,hi); r(113,60,6,2,hi);
+  if(pose==='idle'){r(39,75,5,2,hi);r(116,75,5,2,hi);r(37,93,12,1,shade);r(111,93,12,1,shade);}
+  if(pose==='flex'){r(28,56,6,2,hi);r(126,56,6,2,hi);r(20,36,3,20,shade);r(137,36,3,20,shade);}
+  if(veins){
+    const vc=dark?'#3a1a10':'#c0392b';
+    if(pose==='flex'){r(26,64,10,1,vc);r(30,62,1,3,vc);r(124,64,10,1,vc);r(129,62,1,3,vc);r(22,44,1,10,vc);r(137,44,1,10,vc);}
+    else{r(40,80,1,10,vc);r(119,80,1,10,vc);}
+    r(68,22+hy,1,4,vc);
+  }
+  // trunks
+  r(57,113,46,8,OUT); r(58,114,44,7,'#e0336a'); r(58,114,44,1,'#ff7aa2');
+  // hair
+  r(66,12+hy,28,9,'#0d0d12'); r(66,18+hy,2,9,'#0d0d12'); r(92,18+hy,2,9,'#0d0d12'); r(68,12+hy,24,1,'#3a3a4a');
+  // brows
+  r(69,25+hy,9,3,'#0d0d12'); r(82,25+hy,9,3,'#0d0d12'); r(75,28+hy,3,1,'#0d0d12'); r(82,28+hy,3,1,'#0d0d12');
+  // nose
+  r(79,33+hy,2,5,shade); r(77,37+hy,6,1,shade);
+  drawEyes(hy,shade);
+  drawMouth(mouth,hy);
+  if(sleep>60&&a.type!=='asleep')r(95,21+hy+((Math.floor(t*3))%3),2,3,'#9fd8ff');
+  ctx.restore();
+  M.eo={ox:ox,oy:oy,hy:hy};
+  if(dark){
+    ctx.fillStyle='rgba(0,0,0,.86)'; ctx.fillRect(0,0,W,H);
+    ctx.save(); ctx.translate(ox,oy); drawEyes(hy,'#000'); drawMouth('laugh',hy,true); ctx.restore();
+  }
+}
+function drawEyes(hy,lidColor){
+  const close=M.close, lid=Math.round(7*close);
+  [[69,0],[82,1]].forEach(([x,side])=>{
+    r(x-1,27+hy,11,1,OUT); r(x-1,35+hy,11,1,OUT); r(x-1,28+hy,1,7,OUT); r(x+9,28+hy,1,7,OUT);
+    r(x,28+hy,9,7,'#ffffff');
+    r(x+3,30+hy,2,2,'#111');
+    if(side===0){r(x,29+hy,2,1,'#e43b3b');r(x+1,33+hy,1,1,'#e43b3b');r(x+7,28+hy,1,2,'#e43b3b');}
+    else{r(x+7,29+hy,2,1,'#e43b3b');r(x+7,33+hy,1,1,'#e43b3b');r(x+1,28+hy,1,2,'#e43b3b');}
+    if(lid>0){r(x,28+hy,9,lid,lidColor);r(x,28+hy+lid-1,9,1,OUT);}
+  });
+}
+function drawMouth(m,hy,glow){
+  const y=hy;
+  if(m==='grin'){r(73,40+y,14,3,OUT);r(74,40+y,12,2,'#fff');r(77,40+y,1,2,OUT);r(82,40+y,1,2,OUT);}
+  else if(m==='shout'){r(74,39+y,12,6,OUT);r(75,40+y,10,1,'#fff');r(76,43+y,8,2,'#c33');}
+  else if(m==='laugh'){r(72,39+y,16,5,OUT);r(73,39+y,14,1,'#fff');if(!glow)r(76,42+y,8,2,'#c33');}
+  else if(m==='sleep'){r(77,41+y,6,2,OUT);r(84,42+y,1,3+Math.round(Math.sin(M.time*2)+1),'#9fd8ff');}
+  else{r(75,41+y,10,1,OUT);}
+}
+function drawProps(){
+  const pr=M.prop;
+  if(pr){const q=Math.min(1,pr.t/0.25);emoji(pr.ch,10+q*36,48,16);}
+  const a=M.anim;
+  if(a.type==='great'&&a.fx==='spot'&&a.t<1.6){
+    ctx.fillStyle='rgba(255,240,170,.22)';
+    ctx.beginPath();ctx.moveTo(70,0);ctx.lineTo(90,0);ctx.lineTo(126,120);ctx.lineTo(34,120);ctx.closePath();ctx.fill();
+    for(let i=0;i<6;i++)emoji('👏',14+i*26,113+((Math.floor(M.time*10)+i)%2),10);
+  }
+}
+function drawEvents(){
+  if(!S)return;
+  const A=S.active;
+  if(A.futon){const e=A.futon,q=Math.min(1,(S.t-e.t)/e.dur);emoji('🛏️',168-q*52,100,20);}
+  if(A.principal){emoji('🧓',14,92,16);emoji('🎤',24,98,9);}
+  if(A.cat)emoji('🐈',80,112,14);
+  if(A.neighbor)emoji('💢',150,46+((Math.floor(M.time*6))%2),12);
+  if(A.mom){ctx.fillStyle='rgba(6,4,22,.72)';ctx.fillRect(0,0,W,H);emoji('👩',14,92,16);
+    const eo=M.eo||{ox:0,oy:0,hy:0};ctx.save();ctx.translate(eo.ox,eo.oy);drawEyes(eo.hy,'#57301a');ctx.restore();}
+}
+function drawParticles(){
+  for(const p of M.parts){
+    const al=Math.max(0,Math.min(1,p.life/p.max*1.5));
+    ctx.globalAlpha=al;
+    if(p.k==='z'){ctx.fillStyle='#7fd0ff';ctx.font='bold 8px monospace';ctx.fillText('Z',Math.round(p.x),Math.round(p.y));}
+    else if(p.k==='steam')r(p.x,p.y,3,3,'#dfe8ff');
+    else if(p.k==='fire')r(p.x,p.y,2,2,p.life>0.5?'#ffd23f':p.life>0.25?'#ff7a1a':'#ff3b2f');
+    else if(p.k==='spark'){r(p.x,p.y,1,3,'#ffd23f');r(p.x-1,p.y+1,3,1,'#ffd23f');}
+    else if(p.k==='emoji')emoji(p.ch,p.x,p.y,p.size,p.flip);
+    ctx.globalAlpha=1;
+  }
+}
+function drawVignette(){
+  const s=S?S.sleep:M.titleSleep;
+  if(s<60||(S&&S.feverT>0))return;
+  const a=Math.min(0.75,(s-60)/40*0.75);
+  for(let i=0;i<10;i++){
+    ctx.fillStyle=`rgba(8,6,26,${(a*(10-i)/10).toFixed(3)})`;
+    ctx.fillRect(0,i*2,W,2); ctx.fillRect(0,H-2-i*2,W,2); ctx.fillRect(i*2,0,2,H); ctx.fillRect(W-2-i*2,0,2,H);
+  }
+}
+function render(){
+  ctx.imageSmoothingEnabled=false;
+  drawRoom();
+  drawMan();
+  drawProps();
+  drawParticles();
+  drawEvents();
+  drawVignette();
+}
+
+/* ---------- Layout ---------- */
+function fit(){
+  const wrap=$('stageWrap'), st=$('stage');
+  const w=wrap.clientWidth, h=wrap.clientHeight;
+  let sw=w, sh=w*0.75; if(sh>h){sh=h;sw=h/0.75;}
+  st.style.width=Math.floor(sw)+'px'; st.style.height=Math.floor(sh)+'px';
+}
+
+/* ---------- Flow ---------- */
+function startGame(){
+  auInit(); setMode('main');
+  try{navigator.wakeLock&&navigator.wakeLock.request('screen').catch(()=>{});}catch(e){}
+  $('title').hidden=true; $('result').hidden=true; $('dream').hidden=true; $('banner').hidden=true;
+  $('app').classList.remove('in-fever'); clearEventUI(); hudCache={};
+  newRun();
+  showMsg('<span class="t-i">【開始】</span> ▶ 残り30分','目がバキバキの男が、すでに船を漕いでいる。起こせ！','');
+  dealChoices();
+}
+function toTitle(){
+  S=null; $('result').hidden=true; $('title').hidden=false; setMode('title');
+  renderChoices(); clearEventUI(); hudCache={}; M.anim={type:'idle',t:0};
+  $('sleepBar').style.width='0%'; $('feverBar').style.width='0%'; setText('sleepVal','-'); setText('comboVal','-'); setText('score','0');
+  updateTitleInfo();
+}
+function updateTitleInfo(){
+  $('titleInfo').textContent=(best>0?'自己ベスト '+best.toLocaleString()+'　':'')+'図鑑 '+zukan.size+'/'+ZUKAN_TOTAL+'　音は右上の ♪ で切り替え';
+}
+
+let last=0;
+function loop(ts){
+  const dt=Math.min(0.05,(ts-(last||ts))/1000); last=ts;
+  update(dt); render();
+  requestAnimationFrame(loop);
+}
+
+function start(){
+  setSound(AU.on);
+  $('startBtn').addEventListener('click',startGame);
+  $('againBtn').addEventListener('click',startGame);
+  $('toTitleBtn').addEventListener('click',toTitle);
+  $('muteBtn').addEventListener('click',()=>{auInit();setSound(!AU.on);});
+  $('dreamBtn').addEventListener('pointerdown',e=>{e.preventDefault();dreamTap();});
+  $('dreamBtn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();dreamTap();}});
+  $('copyBtn').addEventListener('click',()=>{
+    const note=$('copyNote');
+    const done=()=>{note.textContent='コピーしました';};
+    const fail=()=>{note.textContent=lastResultText;};
+    try{navigator.clipboard.writeText(lastResultText).then(done,fail);}catch(e){fail();}
+  });
+  window.addEventListener('keydown',e=>{
+    if(e.repeat&&e.key!==' ')return;
+    if(e.key==='1'||e.key==='2'||e.key==='3'){choose(Number(e.key)-1);return;}
+    if(e.key===' '){
+      if(S&&S.phase==='dream'){e.preventDefault();dreamTap();}
+    }
+    if(e.key==='m'||e.key==='M'){auInit();setSound(!AU.on);}
+  });
+  window.addEventListener('resize',fit);
+  if(window.ResizeObserver)new ResizeObserver(fit).observe($('stageWrap'));
+  fit(); updateTitleInfo(); renderChoices();
+  requestAnimationFrame(loop);
+}
+start();
+})();
+</script>
+
+</body>
+</html>
